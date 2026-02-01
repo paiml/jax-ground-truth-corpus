@@ -13,17 +13,19 @@ Production-ready Python recipes for JAX ML workflows, organized as a ground trut
 - All recipes must be self-contained and runnable
 - Cross-reference Rust equivalents in docstrings where applicable
 
-## Commands
+## Commands (uv-only)
 
 ```bash
-uv sync            # Install/sync all dependencies
-make lint          # uv run ruff check
-make test          # uv run pytest with coverage
-make fmt           # uv run ruff format
-make typecheck     # uv run mypy strict
-make coverage      # uv run pytest-cov HTML report
+uv sync            # Install dependencies
+make lint          # ruff check
+make test          # pytest with coverage
+make fmt           # ruff format
+make typecheck     # mypy strict
+make coverage      # pytest-cov HTML report
 make all           # lint + typecheck + test
 ```
+
+All make targets use `uv run` internally.
 
 ## Module Structure
 

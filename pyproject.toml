@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "jax-ground-truth-corpus"
 version = "0.1.0"
@@ -19,10 +23,6 @@ dev = [
     "mypy>=1.10",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/jax_gtc"]
 
@@ -32,11 +32,17 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "D", "UP"]
+ignore = ["D203", "D213"]  # Use D211 (no-blank-line-before-class) and D212 (multi-line-summary-first-line)
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "N806"]  # No docstrings required, allow math conventions (J, H, A)
 
 [tool.mypy]
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+# JAX type stubs are incomplete
+disable_error_code = ["no-any-return", "type-arg", "no-untyped-call"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

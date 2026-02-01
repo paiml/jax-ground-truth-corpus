@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import jax
 import jax.numpy as jnp
-import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 

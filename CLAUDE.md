@@ -16,11 +16,12 @@ Production-ready Python recipes for JAX ML workflows, organized as a ground trut
 ## Commands
 
 ```bash
-make lint          # ruff check + mypy
-make test          # pytest with coverage
-make fmt           # ruff format
-make typecheck     # mypy strict
-make coverage      # pytest-cov HTML report
+uv sync            # Install/sync all dependencies
+make lint          # uv run ruff check
+make test          # uv run pytest with coverage
+make fmt           # uv run ruff format
+make typecheck     # uv run mypy strict
+make coverage      # uv run pytest-cov HTML report
 make all           # lint + typecheck + test
 ```
 

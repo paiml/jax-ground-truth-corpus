@@ -30,8 +30,7 @@ This corpus provides curated, tested, and documented JAX patterns that serve thr
 ## Installation
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync
 ```
 
 ## Quick Start
@@ -162,11 +161,14 @@ TOTAL                                   250      0   100%
 ## Development
 
 ```bash
+# Install dependencies
+uv sync
+
 # Quality gates
-make lint          # ruff check
-make test          # pytest with coverage
-make fmt           # ruff format
-make typecheck     # mypy strict
+make lint          # uv run ruff check
+make test          # uv run pytest with coverage
+make fmt           # uv run ruff format
+make typecheck     # uv run mypy strict
 make all           # lint + typecheck + test
 
 # Type checking with ty

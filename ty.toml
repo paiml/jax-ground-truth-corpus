@@ -1,3 +1,2 @@
 [environment]
-python = ".venv/bin/python3"
 extra-paths = ["src"]

@@ -1,19 +1,19 @@
 .PHONY: lint test fmt typecheck coverage all clean
 
 lint:
-	ruff check src/ tests/
+	uv run ruff check src/ tests/
 
 test:
-	pytest --cov=jax_gtc --cov-report=term-missing -v
+	uv run pytest --cov=jax_gtc --cov-report=term-missing -v
 
 fmt:
-	ruff format src/ tests/
+	uv run ruff format src/ tests/
 
 typecheck:
-	mypy src/
+	uv run mypy src/
 
 coverage:
-	pytest --cov=jax_gtc --cov-report=html --cov-report=term-missing
+	uv run pytest --cov=jax_gtc --cov-report=html --cov-report=term-missing
 
 all: lint typecheck test
 

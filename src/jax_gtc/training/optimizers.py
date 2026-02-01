@@ -260,3 +260,206 @@ def cosine_schedule(
         return min_lr
     progress = step / total_steps
     return min_lr + 0.5 * (base_lr - min_lr) * (1 + math.cos(math.pi * progress))
+
+
+def gradient_accumulation(
+    loss_fn: Callable[..., Array],
+    params: dict[str, Array],
+    batches: list[tuple[Array, Array]],
+) -> dict[str, Array]:
+    """Accumulate gradients over multiple micro-batches.
+
+    Useful for simulating larger batch sizes when memory-constrained.
+    Computes gradient for each micro-batch and averages them.
+
+    Args:
+        loss_fn: Loss function(params, x, y) -> scalar.
+        params: Model parameters.
+        batches: List of (x, y) micro-batch tuples.
+
+    Returns:
+        Averaged gradients across all micro-batches.
+
+    Raises:
+        ValueError: If batches is empty.
+
+    Examples:
+        >>> import jax.numpy as jnp
+        >>> def mse(params, x, y):
+        ...     return jnp.mean((x @ params["w"] - y) ** 2)
+        >>> params = {"w": jnp.ones((2, 1))}
+        >>> batches = [
+        ...     (jnp.ones((2, 2)), jnp.zeros((2, 1))),
+        ...     (jnp.ones((2, 2)), jnp.zeros((2, 1))),
+        ... ]
+        >>> grads = gradient_accumulation(mse, params, batches)
+        >>> grads["w"].shape
+        (2, 1)
+
+    Rust equivalent:
+        entrenar::GradAccumulator stores running gradient sums and
+        divides by count after all micro-batches are processed.
+
+    """
+    if not batches:
+        msg = "batches must contain at least one batch"
+        raise ValueError(msg)
+
+    accumulated: dict[str, Array] = {}
+    num_batches = len(batches)
+
+    for x, y in batches:
+        grads = jax.grad(loss_fn)(params, x, y)
+        for k, g in grads.items():
+            if k in accumulated:
+                accumulated[k] = accumulated[k] + g
+            else:
+                accumulated[k] = g
+
+    # Average the gradients
+    return {k: g / num_batches for k, g in accumulated.items()}
+
+
+def checkpoint_save(
+    params: dict[str, Array],
+    path: str | Any,
+    optimizer_state: Any | None = None,
+) -> None:
+    """Save model checkpoint to disk.
+
+    Serializes parameters (and optionally optimizer state) to a
+    NumPy .npz file for persistence.
+
+    Args:
+        params: Model parameters to save.
+        path: File path for the checkpoint.
+        optimizer_state: Optional optimizer state to include.
+
+    Examples:
+        >>> import jax.numpy as jnp
+        >>> import tempfile
+        >>> params = {"w": jnp.array([1.0, 2.0])}
+        >>> with tempfile.NamedTemporaryFile(suffix=".npz") as f:
+        ...     checkpoint_save(params, f.name)
+
+    Rust equivalent:
+        pacha::ModelRegistry::save persists models in APR format
+        with Ed25519 signatures for integrity verification.
+
+    """
+    from pathlib import Path
+
+    import numpy as np
+
+    save_dict = {f"param_{k}": np.asarray(v) for k, v in params.items()}
+
+    if optimizer_state is not None:
+        # Handle NamedTuple optimizer states
+        save_dict["__has_optimizer__"] = np.array([1])
+        if hasattr(optimizer_state, "_asdict"):
+            state_dict = optimizer_state._asdict()
+            for k, v in state_dict.items():
+                if isinstance(v, dict):
+                    for sk, sv in v.items():
+                        save_dict[f"opt_{k}_{sk}"] = np.asarray(sv)
+                elif isinstance(v, (int, float)):
+                    save_dict[f"opt_{k}"] = np.array([v])
+                else:
+                    save_dict[f"opt_{k}"] = np.asarray(v)
+
+    np.savez(str(Path(path)), **save_dict)  # type: ignore[arg-type]
+
+
+def checkpoint_load(
+    path: str | Any,
+    load_optimizer: bool = False,
+) -> dict[str, Array] | tuple[dict[str, Array], Any]:
+    """Load model checkpoint from disk.
+
+    Deserializes parameters (and optionally optimizer state) from
+    a NumPy .npz file.
+
+    Args:
+        path: File path to the checkpoint.
+        load_optimizer: Whether to also load optimizer state.
+
+    Returns:
+        If load_optimizer is False: dict of parameters.
+        If load_optimizer is True: tuple of (params, optimizer_state).
+
+    Raises:
+        FileNotFoundError: If checkpoint file doesn't exist.
+
+    Examples:
+        >>> import jax.numpy as jnp
+        >>> import tempfile
+        >>> params = {"w": jnp.array([1.0, 2.0])}
+        >>> with tempfile.NamedTemporaryFile(suffix=".npz", delete=False) as f:
+        ...     checkpoint_save(params, f.name)
+        ...     loaded = checkpoint_load(f.name)
+        >>> loaded["w"].tolist()
+        [1.0, 2.0]
+
+    Rust equivalent:
+        pacha::ModelRegistry::load verifies signatures and loads
+        APR format models into trueno tensors.
+
+    """
+    from pathlib import Path
+
+    import numpy as np
+
+    file_path = Path(path)
+    if not file_path.exists():
+        msg = f"Checkpoint not found: {path}"
+        raise FileNotFoundError(msg)
+
+    data = np.load(file_path)
+
+    # Extract parameters
+    params = {}
+    for k in data.files:
+        if k.startswith("param_"):
+            param_name = k[6:]  # Remove "param_" prefix
+            params[param_name] = jnp.array(data[k])
+
+    if not load_optimizer:
+        return params
+
+    # Reconstruct optimizer state
+    has_optimizer = "__has_optimizer__" in data.files
+
+    if not has_optimizer:
+        return params, None
+
+    # Extract optimizer state fields
+    opt_fields: dict[str, Any] = {}
+    m_dict: dict[str, Array] = {}
+    v_dict: dict[str, Array] = {}
+
+    for k in data.files:
+        if k.startswith("opt_"):
+            field_name = k[4:]  # Remove "opt_" prefix
+            if field_name.startswith("m_"):
+                m_dict[field_name[2:]] = jnp.array(data[k])
+            elif field_name.startswith("v_"):
+                v_dict[field_name[2:]] = jnp.array(data[k])
+            else:
+                val = data[k]
+                if val.shape == (1,):
+                    opt_fields[field_name] = float(val[0]) if "." in str(val[0]) else int(val[0])
+                else:
+                    opt_fields[field_name] = jnp.array(val)
+
+    # Reconstruct AdamState
+    state = AdamState(
+        learning_rate=opt_fields.get("learning_rate", 0.001),
+        beta1=opt_fields.get("beta1", 0.9),
+        beta2=opt_fields.get("beta2", 0.999),
+        eps=opt_fields.get("eps", 1e-8),
+        step=int(opt_fields.get("step", 0)),
+        m=m_dict,
+        v=v_dict,
+    )
+
+    return params, state

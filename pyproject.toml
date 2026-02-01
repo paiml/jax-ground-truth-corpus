@@ -19,8 +19,8 @@ dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "hypothesis>=6.100",
-    "ruff>=0.4",
-    "mypy>=1.10",
+    "ruff>=0.9",
+    "ty>=0.0.1a7",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -29,21 +29,26 @@ packages = ["src/jax_gtc"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "D", "UP"]
-ignore = ["D203", "D213"]  # Use D211 (no-blank-line-before-class) and D212 (multi-line-summary-first-line)
+select = ["E", "F", "W", "I", "N", "D", "UP", "ANN", "B", "C4", "SIM"]
+ignore = ["D100", "D104", "ANN401"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D", "N806"]  # No docstrings required, allow math conventions (J, H, A)
-
-[tool.mypy]
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-# JAX type stubs are incomplete
-disable_error_code = ["no-any-return", "type-arg", "no-untyped-call"]
+"tests/*" = ["D", "ANN", "N806"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=jax_gtc --cov-report=term-missing --doctest-modules"
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src/jax_gtc"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]
+fail_under = 95

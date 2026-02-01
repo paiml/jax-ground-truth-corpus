@@ -139,6 +139,7 @@ class TestCustomVjpRule:
 
     def test_custom_vjp_rule_wrapper(self):
         """Test our custom_vjp_rule wrapper function."""
+
         def my_fn(x):
             return jnp.log(x)
 
@@ -172,6 +173,7 @@ class TestStopGradient:
 
     def test_stop_gradient_wrapper(self):
         """Test our stop_gradient wrapper."""
+
         def f(x):
             return x * stop_gradient(x)
 

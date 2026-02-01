@@ -145,7 +145,9 @@ def data_parallel_step(
     """
 
     def step(
-        params: dict[str, Array], x: Array, y: Array,
+        params: dict[str, Array],
+        x: Array,
+        y: Array,
     ) -> tuple[dict[str, Array], Array]:
         loss, grads = jax.value_and_grad(loss_fn)(params, x, y)
         grads = jax.lax.pmean(grads, axis_name="devices")
@@ -526,9 +528,6 @@ def fsdp_training_step(
     sharded_grads = fsdp_wrap_params(grads, num_shards)
 
     # Update sharded parameters
-    new_params = {
-        k: params[k] - learning_rate * sharded_grads[k]
-        for k in params
-    }
+    new_params = {k: params[k] - learning_rate * sharded_grads[k] for k in params}
 
     return new_params, float(loss)

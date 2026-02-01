@@ -235,7 +235,12 @@ class TestFsdpTraining:
         y = jnp.zeros((4, 1))
 
         new_params, loss = fsdp_training_step(
-            loss_fn, params, x, y, learning_rate=0.01, num_shards=1,
+            loss_fn,
+            params,
+            x,
+            y,
+            learning_rate=0.01,
+            num_shards=1,
         )
         assert loss > 0
         assert new_params["w"].shape == (3, 1)

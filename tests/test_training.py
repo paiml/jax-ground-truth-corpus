@@ -86,7 +86,10 @@ class TestAdamOptimizer:
     def test_custom_betas(self):
         shapes = {"w": (2,)}
         state, update_fn = adam_optimizer(
-            beta1=0.8, beta2=0.99, eps=1e-7, param_shapes=shapes,
+            beta1=0.8,
+            beta2=0.99,
+            eps=1e-7,
+            param_shapes=shapes,
         )
         assert state.beta1 == 0.8
         assert state.beta2 == 0.99
@@ -106,7 +109,12 @@ class TestTrainingStep:
         x = jnp.ones((4, 3))
         y = jnp.zeros((4, 1))
         new_params, new_state, loss = training_step(
-            params, x, y, mse, update_fn, state,
+            params,
+            x,
+            y,
+            mse,
+            update_fn,
+            state,
         )
         assert loss > 0
         assert new_params["w"].shape == (3, 1)
